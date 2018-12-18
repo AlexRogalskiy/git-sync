@@ -346,10 +346,6 @@ func cloneRepo(repo, branch, rev string, depth int, gitRoot string) error {
 				log.V(0).Infof("%s has unobtainable permissions", gitRoot)
 			}
 			log.V(0).Infof("%s the root has a mode", info.Mode())
-			err3 := os.Chmod(gitRoot, 0777)
-			if err3 != nil {
-				log.V(0).Infof("Could not change the mode of the root %s", gitRoot)
-			}
 			usr := os.Getuid()
 			log.V(0).Infof("The current user is %s", usr)
 			err4 := os.Remove(gitRoot)
