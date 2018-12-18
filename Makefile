@@ -19,7 +19,7 @@ BIN := git-sync
 PKG := postmates/git-sync
 
 # Where to push the docker image.
-REGISTRY ?= quay.io/postmates/git-sync
+REGISTRY ?= quay.io/postmates
 
 # Which platform to build - see $(ALL_PLATFORMS) for options.
 PLATFORM ?= linux/amd64
@@ -28,7 +28,7 @@ OS := $(firstword $(subst /, ,$(PLATFORM)))
 ARCH := $(lastword $(subst /, ,$(PLATFORM)))
 
 # This version-strategy uses git tags to set the version string
-VERSION := 3.0.2
+VERSION := $(shell git describe --tags --always --dirty)
 #
 # This version-strategy uses a manual value to set the version string
 #VERSION := 1.2.3
