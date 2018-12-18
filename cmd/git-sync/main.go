@@ -16,7 +16,7 @@ limitations under the License.
 
 // git-sync is a command that pull a git repository to a local directory.
 
-package main // import "k8s.io/git-sync/cmd/git-sync"
+package main // import "postmates/git-sync/cmd/git-sync"
 
 import (
 	"bytes"
@@ -239,6 +239,7 @@ func sleepForever() {
 // updateSymlink atomically swaps the symlink to point at the specified directory and cleans up the previous worktree.
 func updateSymlink(gitRoot, link, newDir string) error {
 	// Get currently-linked repo directory (to be removed), unless it doesn't exist
+	log.V(0).Infof("Updating the symlink to %s", newDir)
 	currentDir, err := filepath.EvalSymlinks(path.Join(gitRoot, link))
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("error accessing symlink: %v", err)
@@ -254,12 +255,12 @@ func updateSymlink(gitRoot, link, newDir string) error {
 	if _, err := runCommand(gitRoot, "ln", "-snf", newDirRelative, "tmp-link"); err != nil {
 		return fmt.Errorf("error creating symlink: %v", err)
 	}
-	log.V(1).Infof("created symlink %s -> %s", "tmp-link", newDirRelative)
+	log.V(0).Infof("created symlink %s -> %s", "tmp-link", newDirRelative)
 
 	if _, err := runCommand(gitRoot, "mv", "-T", "tmp-link", link); err != nil {
 		return fmt.Errorf("error replacing symlink: %v", err)
 	}
-	log.V(1).Infof("renamed symlink %s to %s", "tmp-link", link)
+	log.V(0).Infof("renamed symlink %s to %s", "tmp-link", link)
 
 	// Clean up previous worktree
 	if len(currentDir) > 0 {
@@ -267,14 +268,14 @@ func updateSymlink(gitRoot, link, newDir string) error {
 			return fmt.Errorf("error removing directory: %v", err)
 		}
 
-		log.V(1).Infof("removed %s", currentDir)
+		log.V(0).Infof("removed %s", currentDir)
 
 		_, err := runCommand(gitRoot, "git", "worktree", "prune")
 		if err != nil {
 			return err
 		}
 
-		log.V(1).Infof("pruned old worktrees")
+		log.V(0).Infof("pruned old worktrees")
 	}
 
 	return nil
@@ -324,6 +325,7 @@ func addWorktreeAndSwap(gitRoot, dest, branch, rev, hash string) error {
 			return err
 		}
 	}
+	log.V(0).Infof("Ignoring the chmod command and linking the dest %s", dest)
 
 	return updateSymlink(gitRoot, dest, worktreePath)
 }
@@ -339,9 +341,24 @@ func cloneRepo(repo, branch, rev string, depth int, gitRoot string) error {
 		if strings.Contains(err.Error(), "already exists and is not an empty directory") {
 			// Maybe a previous run crashed?  Git won't use this dir.
 			log.V(0).Infof("%s exists and is not empty (previous crash?), cleaning up", gitRoot)
-			err := os.RemoveAll(gitRoot)
+			info, err := os.Stat(gitRoot)
 			if err != nil {
-				return err
+				log.V(0).Infof("%s has unobtainable permissions", gitRoot)
+			}
+			log.V(0).Infof("%s the root has a mode", info.Mode())
+			err3 := os.Chmod(gitRoot, 0777)
+			if err3 != nil {
+				log.V(0).Infof("Could not change the mode of the root %s", gitRoot)
+			}
+			usr := os.Getuid()
+			log.V(0).Infof("The current user is %s", usr)
+			err4 := os.Remove(gitRoot)
+			if err4 != nil {
+				log.V(0).Infof("Trouble removing the root %s", err4)
+			}
+			err2 := os.RemoveAll(gitRoot)
+			if err2 != nil {
+				return err2
 			}
 			_, err = runCommand("", "git", args...)
 			if err != nil {
