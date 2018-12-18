@@ -26,6 +26,5 @@ RUN apk update --no-cache && apk add \
 
 # Set $HOME so git can create things like .gitconfig
 ENV HOME /tmp
-
 USER nobody:nobody
 ENTRYPOINT ["/{ARG_BIN}"]

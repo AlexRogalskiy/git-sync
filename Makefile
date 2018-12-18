@@ -16,10 +16,10 @@
 BIN := git-sync
 
 # This repo's root import path (under GOPATH).
-PKG := k8s.io/git-sync
+PKG := postmates/git-sync
 
 # Where to push the docker image.
-REGISTRY ?= staging-k8s.gcr.io
+REGISTRY ?= quay.io/postmates
 
 # Which platform to build - see $(ALL_PLATFORMS) for options.
 PLATFORM ?= linux/amd64
@@ -89,16 +89,18 @@ build: bin/$(OS)_$(ARCH)/$(BIN)
 
 bin/$(OS)_$(ARCH)/$(BIN): build-dirs
 	@echo "building: $@"
+	@echo "ROOT: $(GOROOT) PATH: $(GOPATH)"
+	@echo $$(id -u):$$(id -g)
 	@docker run                                                                  \
 	    -i                                                                       \
 	    -u $$(id -u):$$(id -g)                                                   \
-	    -v $$(pwd)/.go:/go                                                       \
-	    -v $$(pwd):/go/src/$(PKG)                                                \
-	    -v $$(pwd)/bin/$(OS)_$(ARCH):/go/bin                                     \
-	    -v $$(pwd)/bin/$(OS)_$(ARCH):/go/bin/$(OS)_$(ARCH)                       \
-	    -v $$(pwd)/.go/std/$(OS)_$(ARCH):/usr/local/go/pkg/$(OS)_$(ARCH)_static  \
+	    -v $$(pwd)/.go:$(GOPATH)                                                       \
+	    -v $$(pwd):$(GOPATH)/src/$(PKG)                                                \
+	    -v $$(pwd)/bin/$(OS)_$(ARCH):$(GOPATH)/bin                                     \
+	    -v $$(pwd)/bin/$(OS)_$(ARCH):$(GOPATH)/bin/$(OS)_$(ARCH)                       \
+	    -v $$(pwd)/.go/std/$(OS)_$(ARCH):$(GOPATH)/pkg/$(OS)_$(ARCH)_static  \
 	    -v $$(pwd)/.go/cache:/.cache                                             \
-	    -w /go/src/$(PKG)                                                        \
+	    -w $(GOPATH)/src/$(PKG)                                                        \
 	    --rm                                                                     \
 	    $(BUILD_IMAGE)                                                           \
 	    /bin/sh -c "                                                             \
@@ -106,13 +108,15 @@ bin/$(OS)_$(ARCH)/$(BIN): build-dirs
 	        OS=$(OS)                                                             \
 	        VERSION=$(VERSION)                                                   \
 	        PKG=$(PKG)                                                           \
-	        ./build/build.sh                                                     \
+	        ./build/build.sh $(GOPATH)                                                     \
 	    "
 
 DOTFILE_IMAGE = $(subst /,_,$(IMAGE))-$(TAG)
 
 container: .container-$(DOTFILE_IMAGE) container-name
 .container-$(DOTFILE_IMAGE): bin/$(OS)_$(ARCH)/$(BIN) Dockerfile.in
+	@echo $(GOPATH)
+	@echo $(GOROOT)
 	@sed \
 	    -e 's|{ARG_BIN}|$(BIN)|g' \
 	    -e 's|{ARG_ARCH}|$(ARCH)|g' \
@@ -150,12 +154,12 @@ test: build-dirs
 	@docker run                                                                  \
 	    -ti                                                                      \
 	    -u $$(id -u):$$(id -g)                                                   \
-	    -v $$(pwd)/.go:/go                                                       \
-	    -v $$(pwd):/go/src/$(PKG)                                                \
-	    -v $$(pwd)/bin/$(OS)_$(ARCH):/go/bin                                     \
-	    -v $$(pwd)/.go/std/$(OS)_$(ARCH):/usr/local/go/pkg/$(OS)_$(ARCH)_static  \
+	    -v $$(pwd)/.go:$(GOPATH)                                                       \
+	    -v $$(pwd):$(GOPATH)/src/$(PKG)                                                \
+	    -v $$(pwd)/bin/$(OS)_$(ARCH):$(GOPATH)/bin                                     \
+	    -v $$(pwd)/.go/std/$(OS)_$(ARCH):/usr/local/opt/go/pkg/$(OS)_$(ARCH)_static  \
 	    -v $$(pwd)/.go/cache:/.cache                                             \
-	    -w /go/src/$(PKG)                                                        \
+	    -w $(GOPATH)/src/$(PKG)                                                        \
 	    $(BUILD_IMAGE)                                                           \
 	    /bin/sh -c "                                                             \
 	        ./build/test.sh $(SRC_DIRS)                                          \
