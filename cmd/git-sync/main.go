@@ -265,7 +265,9 @@ func updateSymlink(gitRoot, link, newDir string) error {
 	// Clean up previous worktree
 	if len(currentDir) > 0 {
 		if err = os.RemoveAll(currentDir); err != nil {
-			return fmt.Errorf("error removing directory: %v", err)
+			// TODO Fix this so that the pyc files are addressed, maybe just sleep a bit
+			//return fmt.Errorf("error removing directory: %v", err)
+			log.V(0).Info("Failed to remove %s", currentDir)
 		}
 
 		log.V(0).Infof("removed %s", currentDir)
